@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIKEY SERVER — WINGO Prediction</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+--purple:#7c3aed;--purple2:#9d5cf6;--purple-glow:rgba(124,58,237,0.55);
+--green:#00ff88;--green2:#00e676;--green-glow:rgba(0,255,136,0.4);
+--red:#ff4466;--red-glow:rgba(255,68,102,0.5);
+--bg:#0a0812;--bg2:#0d0b18;--bg3:#110e1f;
+--card:#13102000;--card-border:rgba(124,58,237,0.3);
+--text:#ffffff;--text-sub:#9480c0;--text-dim:#5a4a7a;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:url('505.png') center/cover no-repeat;opacity:0.18;z-index:0;pointer-events:none;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(124,58,237,0.15) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(0,255,136,0.05) 0%,transparent 60%);z-index:0;pointer-events:none;}
+.app{position:relative;z-index:1;max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding-bottom:70px;}
+
+/* NAVBAR */
+nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:56px;background:rgba(10,8,18,0.95);backdrop-filter:blur(16px);border-bottom:1px solid rgba(124,58,237,0.2);}
+.nav-menu{display:flex;flex-direction:column;gap:5px;cursor:pointer;padding:6px;}
+.nav-menu span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
+.nav-brand{font-family:'Orbitron',monospace;font-size:15px;font-weight:800;letter-spacing:2px;}
+.nav-brand .white{color:#fff;}.nav-brand .purple{color:var(--purple2);}
+.nav-device{text-align:right;}
+.nav-device .label{font-size:10px;color:var(--text-sub);letter-spacing:1px;display:block;}
+.nav-device .value{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--green);letter-spacing:1px;}
+
+/* SECTIONS */
+.section{display:none;flex:1;overflow-y:auto;padding:12px 14px;gap:12px;flex-direction:column;}
+.section.active{display:flex;}
+
+/* CARDS */
+.card{background:rgba(19,16,32,0.85);border:1px solid var(--card-border);border-radius:14px;padding:14px;backdrop-filter:blur(8px);}
+
+/* GAME HEADER */
+.game-header-card{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;}
+.game-info{display:flex;align-items:center;gap:12px;}
+.game-icon{width:44px;height:44px;border-radius:50%;background:rgba(124,58,237,0.2);border:2px solid var(--purple2);display:flex;align-items:center;justify-content:center;color:var(--purple2);}
+.game-title{font-family:'Orbitron',monospace;font-size:14px;font-weight:800;color:#fff;letter-spacing:1px;}
+.game-sub{font-size:11px;color:var(--text-sub);margin-top:2px;letter-spacing:1px;}
+.live-badge{display:flex;align-items:center;gap:6px;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);border-radius:20px;padding:6px 14px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--green);letter-spacing:1.5px;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.5s ease-in-out infinite;}
+
+/* ANALYSIS */
+.analysis-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;}
+.analysis-left{display:flex;flex-direction:column;gap:5px;}
+.analysis-title{font-family:'Orbitron',monospace;font-size:11px;color:var(--purple2);letter-spacing:2px;animation:textPulse 2s ease-in-out infinite;}
+@keyframes textPulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.analysis-lines{display:flex;flex-direction:column;gap:3px;}
+.analysis-line{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-sub);letter-spacing:0.5px;}
+.analysis-line.active{color:var(--green);}
+.data-stream-label{font-size:10px;color:var(--text-sub);letter-spacing:2px;margin-bottom:6px;text-align:right;}
+.data-bars{display:flex;align-items:flex-end;gap:3px;height:40px;}
+.data-bar{width:8px;border-radius:2px 2px 0 0;background:linear-gradient(to top,var(--purple),var(--purple2));animation:barPulse 1s ease-in-out infinite;}
+@keyframes barPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.accuracy-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(124,58,237,0.2);}
+.acc-label{font-size:11px;color:var(--text-sub);letter-spacing:1.5px;}
+.acc-value{font-family:'Orbitron',monospace;font-size:18px;font-weight:800;color:var(--green);}
+.acc-high{font-size:11px;font-weight:700;color:var(--green);letter-spacing:2px;}
+
+/* LIVE TREND */
+.trend-title{font-size:11px;color:var(--text-sub);letter-spacing:2px;margin-bottom:10px;}
+.trend-scroll{overflow-x:auto;padding-bottom:4px;}
+.trend-scroll::-webkit-scrollbar{height:3px;}
+.trend-scroll::-webkit-scrollbar-track{background:transparent;}
+.trend-scroll::-webkit-scrollbar-thumb{background:var(--purple);border-radius:2px;}
+.trend-row{display:flex;gap:10px;width:max-content;}
+.trend-item{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.trend-bubble{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:12px;font-weight:800;border:2px solid;transition:all 0.3s;}
+.trend-bubble.big{background:rgba(0,255,136,0.1);border-color:var(--green);color:var(--green);}
+.trend-bubble.small{background:rgba(124,58,237,0.15);border-color:var(--purple2);color:var(--purple2);}
+.trend-time{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);}
+
+/* PREDICTION RESULT */
+.pred-result-card{text-align:center;padding:20px 14px;}
+.pred-result-title{font-family:'Orbitron',monospace;font-size:11px;color:var(--purple2);letter-spacing:3px;margin-bottom:16px;}
+.pred-circle-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;}
+.pred-circle{width:160px;height:160px;border-radius:50%;border:3px solid var(--purple2);box-shadow:0 0 30px var(--purple-glow),inset 0 0 20px rgba(124,58,237,0.1);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:rgba(19,16,32,0.9);}
+.pred-circle::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid transparent;border-top-color:var(--green);border-right-color:var(--green);animation:spin 3s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pred-arrow{position:absolute;top:50%;transform:translateY(-50%);font-size:20px;color:var(--purple2);}
+.pred-arrow.left{left:-28px;}
+.pred-arrow.right{right:-28px;}
+.pred-label-small{font-size:11px;color:var(--text-sub);letter-spacing:2px;}
+.pred-value{font-family:'Orbitron',monospace;font-size:36px;font-weight:900;color:var(--green);text-shadow:0 0 20px var(--green-glow);line-height:1;}
+.pred-conf-label{font-size:10px;color:var(--text-sub);letter-spacing:1.5px;margin-top:4px;}
+.pred-conf-value{font-family:'Orbitron',monospace;font-size:14px;color:var(--green);font-weight:700;}
+.pred-period{font-size:11px;color:var(--text-sub);margin-top:6px;letter-spacing:1px;}
+.pred-period span{color:var(--purple2);font-family:'Share Tech Mono',monospace;}
+.pred-update{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;font-size:11px;color:var(--text-dim);}
+
+/* STATS CARD */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
+.stat-item{background:rgba(19,16,32,0.6);border:1px solid rgba(124,58,237,0.2);border-radius:10px;padding:10px 6px;text-align:center;}
+.stat-icon{width:28px;height:28px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.stat-icon.green-bg{background:rgba(0,255,136,0.15);border:1px solid rgba(0,255,136,0.3);}
+.stat-icon.purple-bg{background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.3);}
+.stat-icon.blue-bg{background:rgba(0,150,255,0.15);border:1px solid rgba(0,150,255,0.3);}
+.stat-icon.orange-bg{background:rgba(255,150,0,0.15);border:1px solid rgba(255,150,0,0.3);}
+.stat-label{font-size:9px;color:var(--text-sub);letter-spacing:1px;display:block;margin-bottom:3px;line-height:1.2;}
+.stat-val{font-family:'Orbitron',monospace;font-size:13px;font-weight:800;}
+.stat-val.green{color:var(--green);}
+.stat-val.purple{color:var(--purple2);}
+.stat-val.white{color:#fff;}
+.stat-val.orange{color:#ffaa00;}
+
+/* GENERATE BUTTON */
+.gen-btn{width:100%;padding:18px;background:linear-gradient(90deg,#5b21b6,#7c3aed,#9d5cf6);border:none;border-radius:14px;font-family:'Orbitron',monospace;font-size:15px;font-weight:800;color:#fff;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 24px rgba(124,58,237,0.4);transition:all 0.2s;position:relative;overflow:hidden;}
+.gen-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);transform:translateX(-100%);transition:transform 0.5s;}
+.gen-btn:hover::before{transform:translateX(100%);}
+.gen-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,0.6);}
+.gen-btn:active{transform:translateY(0);}
+.gen-btn.loading{opacity:0.8;cursor:not-allowed;}
+.spin-svg{animation:spin 1s linear infinite;}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;z-index:200;display:flex;background:rgba(10,8,18,0.98);backdrop-filter:blur(16px);border-top:1px solid rgba(124,58,237,0.2);}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-dim);border:none;background:none;transition:color 0.2s;}
+.nav-tab.active{color:var(--purple2);}
+.nav-tab svg{width:20px;height:20px;}
+
+/* HISTORY */
+.history-header{font-family:'Orbitron',monospace;font-size:13px;color:var(--purple2);letter-spacing:2px;padding-bottom:8px;border-bottom:1px solid rgba(124,58,237,0.2);margin-bottom:12px;}
+.history-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(19,16,32,0.7);border:1px solid rgba(124,58,237,0.15);border-radius:10px;margin-bottom:8px;}
+.history-period{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-sub);min-width:65px;}
+.history-pred{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;flex:1;}
+.history-actual{font-size:11px;color:var(--text-sub);flex:1;text-align:center;}
+.history-result{font-family:'Orbitron',monospace;font-size:12px;font-weight:800;min-width:46px;text-align:right;}
+.history-result.win{color:var(--green);}
+.history-result.loss{color:var(--red);}
+.no-history{text-align:center;color:var(--text-dim);font-size:13px;padding:40px 20px;}
+
+/* STATISTICS */
+.stats-title{font-family:'Orbitron',monospace;font-size:13px;color:var(--purple2);letter-spacing:2px;margin-bottom:14px;}
+.stats-big-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.stats-big-card{background:rgba(19,16,32,0.85);border:1px solid rgba(124,58,237,0.25);border-radius:12px;padding:16px;text-align:center;}
+.stats-big-num{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;line-height:1;}
+.stats-big-label{font-size:11px;color:var(--text-sub);letter-spacing:1.5px;margin-top:4px;}
+.stats-bar-row{display:flex;flex-direction:column;gap:8px;}
+.stats-bar-item{background:rgba(19,16,32,0.7);border:1px solid rgba(124,58,237,0.15);border-radius:10px;padding:10px 14px;}
+.stats-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-sub);margin-bottom:6px;}
+.stats-bar-track{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
+.stats-bar-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+
+/* SETTINGS PANEL */
+.settings-panel{position:fixed;top:0;right:-100%;width:min(360px,100%);height:100%;z-index:500;background:rgba(13,11,24,0.98);backdrop-filter:blur(20px);border-left:1px solid rgba(124,58,237,0.3);transition:right 0.35s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;overflow-y:auto;}
+.settings-panel.open{right:0;}
+.settings-overlay{position:fixed;inset:0;z-index:499;background:rgba(0,0,0,0.6);display:none;}
+.settings-overlay.open{display:block;}
+.settings-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid rgba(124,58,237,0.2);}
+.settings-header-info .title{font-family:'Orbitron',monospace;font-size:14px;font-weight:800;color:#fff;letter-spacing:1.5px;}
+.settings-header-info .sub{font-size:11px;color:var(--text-sub);margin-top:2px;letter-spacing:1px;}
+.settings-close{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.settings-section-label{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--purple2);padding:16px 20px 8px;border-left:3px solid var(--purple2);margin-left:20px;}
+.sysinfo-card{margin:0 20px;background:rgba(19,16,32,0.8);border:1px solid rgba(124,58,237,0.2);border-radius:12px;padding:14px;}
+.sysinfo-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.sysinfo-row:last-child{border-bottom:none;}
+.sysinfo-icon{color:var(--purple2);width:16px;flex-shrink:0;}
+.sysinfo-key{font-size:10px;color:var(--text-sub);letter-spacing:1.5px;}
+.sysinfo-val{font-family:'Share Tech Mono',monospace;font-size:13px;color:#fff;margin-top:1px;}
+.theme-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:0 20px;}
+.theme-btn{border:2px solid transparent;border-radius:8px;padding:8px 4px;cursor:pointer;font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;text-align:center;transition:all 0.2s;position:relative;}
+.theme-btn.active::after{content:'✓';position:absolute;top:2px;right:4px;font-size:10px;}
+.settings-nav{padding:0 20px;display:flex;flex-direction:column;gap:6px;}
+.settings-nav-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(19,16,32,0.7);border:1px solid rgba(124,58,237,0.2);border-radius:10px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:1.5px;cursor:pointer;transition:background 0.2s;}
+.settings-nav-btn:hover{background:rgba(124,58,237,0.15);}
+.settings-logout{margin:16px 20px 20px;padding:16px;background:linear-gradient(90deg,rgba(255,68,102,0.2),rgba(255,68,102,0.15));border:1px solid rgba(255,68,102,0.4);border-radius:10px;color:#ff6688;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer;text-align:center;transition:all 0.2s;}
+.settings-logout:hover{background:rgba(255,68,102,0.3);}
+
+/* ══════════════════════════════════════
+   POPUP OVERLAY — centered, medium size
+══════════════════════════════════════ */
+.popup-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,0.88);
+  display:none;align-items:center;justify-content:center;
+  padding:24px 20px;
+}
+.popup-overlay.show{display:flex;}
+
+/* The card itself — medium, NOT full screen */
+.popup-card{
+  width:100%;max-width:340px;
+  border-radius:22px;
+  overflow:hidden;
+  position:relative;
+  animation:popIn 0.45s cubic-bezier(0.34,1.56,0.64,1);
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
+}
+@keyframes popIn{from{opacity:0;transform:scale(0.65)}to{opacity:1;transform:scale(1)}}
+
+/* Video area — this is the TOP section of the card (anime character zone) */
+.popup-video-wrap{
+  width:100%;
+  aspect-ratio:3/4;   /* portrait, like the anime character images */
+  position:relative;
+  overflow:hidden;
+  flex-shrink:0;
+  background:#000;
+}
+/* Placeholder shown before confirm */
+.popup-video-placeholder{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,rgba(80,20,150,0.6) 0%,rgba(20,8,40,0.95) 100%);
+}
+.popup-video-placeholder .placeholder-icon{
+  font-size:60px;opacity:0.5;
+}
+.popup-video-wrap video{
+  width:100%;height:100%;
+  object-fit:cover;
+  display:block;
+  position:absolute;top:0;left:0;
+}
+
+/* Bottom section */
+.popup-bottom{padding:16px 16px 18px;flex-shrink:0;}
+
+/* Victory */
+.popup-card.victory{border:2px solid var(--purple2);box-shadow:0 0 50px var(--purple-glow),0 0 100px rgba(124,58,237,0.3);}
+.popup-card.victory .popup-bottom{background:linear-gradient(180deg,#0d0b20,#150d2e);}
+.victory-badge{text-align:center;margin-bottom:10px;}
+.victory-badge-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--purple),var(--purple2));clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;filter:drop-shadow(0 0 12px var(--purple-glow));}
+.victory-title{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;color:#fff;letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.victory-title .wing{color:var(--purple2);font-size:16px;}
+.victory-sub{font-size:11px;color:var(--text-sub);letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:3px;}
+
+/* Defeat */
+.popup-card.defeat{border:2px solid var(--red);box-shadow:0 0 50px var(--red-glow),0 0 100px rgba(255,68,102,0.2);}
+.popup-card.defeat .popup-bottom{background:linear-gradient(180deg,#1a0810,#220a14);}
+.defeat-badge-icon{width:52px;height:52px;background:linear-gradient(135deg,#aa1130,#ff4466);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;filter:drop-shadow(0 0 12px var(--red-glow));}
+.defeat-title{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;color:var(--red);letter-spacing:2px;text-align:center;}
+.defeat-sub{font-size:11px;color:rgba(255,68,102,0.7);letter-spacing:2px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:3px;}
+
+/* VS grid inside popup */
+.popup-vs-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:12px 0;}
+.popup-vs-card{background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:12px;padding:10px 6px;text-align:center;}
+.popup-vs-card.actual{background:rgba(0,255,136,0.06);border-color:rgba(0,255,136,0.3);}
+.popup-vs-card.defeat-pred{background:rgba(255,68,102,0.08);border-color:rgba(255,68,102,0.3);}
+.popup-vs-card.defeat-actual{background:rgba(50,100,150,0.1);border-color:rgba(100,150,200,0.3);}
+.popup-vs-icon{width:26px;height:26px;border-radius:50%;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;}
+.popup-vs-icon.pred-icon{background:rgba(124,58,237,0.2);border:1px solid var(--purple2);}
+.popup-vs-icon.act-icon{background:rgba(0,255,136,0.15);border:1px solid var(--green);}
+.popup-vs-label{font-size:8px;color:var(--text-sub);letter-spacing:1.5px;margin-bottom:3px;}
+.popup-vs-val{font-family:'Orbitron',monospace;font-size:14px;font-weight:800;color:#fff;}
+.popup-vs-sep{font-family:'Orbitron',monospace;font-size:10px;font-weight:800;color:var(--text-sub);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+
+/* Confirm button */
+.popup-confirm-btn{width:100%;padding:14px;background:linear-gradient(90deg,#5b21b6,#7c3aed);border:2px solid var(--purple2);border-radius:12px;font-family:'Orbitron',monospace;font-size:13px;font-weight:800;color:#fff;letter-spacing:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 20px rgba(124,58,237,0.4);transition:all 0.2s;}
+.popup-confirm-btn:hover{transform:translateY(-2px);box-shadow:0 4px 28px rgba(124,58,237,0.6);}
+.popup-confirm-btn.defeat-btn{background:linear-gradient(90deg,#7a0a20,#cc2244);border-color:var(--red);box-shadow:0 0 20px rgba(255,68,102,0.3);}
+.popup-confirm-btn.defeat-btn:hover{box-shadow:0 4px 28px rgba(255,68,102,0.5);}
+.popup-ready{text-align:center;font-size:10px;color:var(--text-dim);margin-top:8px;letter-spacing:1.5px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.defeat-note{background:rgba(255,68,102,0.08);border:1px solid rgba(255,68,102,0.2);border-radius:8px;padding:7px 10px;display:flex;align-items:flex-start;gap:7px;margin:6px 0;font-size:10px;color:rgba(255,100,120,0.9);}
+.defeat-note-icon{color:var(--red);flex-shrink:0;}
+.defeat-footer{text-align:center;font-size:10px;color:rgba(255,68,102,0.5);margin-top:8px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:6px;}
+
+/* Confetti */
+#confettiCanvas{position:fixed;inset:0;z-index:999;pointer-events:none;display:none;}
+
+/* FULLSCREEN VIDEO LAYER (plays AFTER confirm) */
+#fsVideoWrap{display:none;position:fixed;inset:0;z-index:2000;background:#000;align-items:center;justify-content:center;}
+#fsVideoWrap video{width:100%;height:100%;object-fit:cover;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.4);border-radius:2px;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.card{animation:fadeInUp 0.4s ease;}
+</style>
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<!-- FULLSCREEN VIDEO LAYER -->
+<div id="fsVideoWrap" style="display:none;position:fixed;inset:0;z-index:2000;background:#000;display:none;align-items:center;justify-content:center;">
+  <video id="fsVideo" playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+</div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-menu" onclick="openSettings()">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="nav-brand"><span class="white">MIKEY </span><span class="purple">SERVER</span></div>
+  <div class="nav-device">
+    <span class="label">DEVICE ID</span>
+    <span class="value" id="navDeviceId">--</span>
+  </div>
+</nav>
+
+<div class="app">
+
+<!-- PREDICTION SECTION -->
+<div class="section active" id="sec-prediction">
+
+  <div class="card game-header-card">
+    <div class="game-info">
+      <div class="game-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div class="game-title">WINGO 1 MIN GAME</div>
+        <div class="game-sub">Real-time Prediction System</div>
+      </div>
+    </div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+  </div>
+
+  <div class="card analysis-card">
+    <div class="analysis-left">
+      <div class="analysis-title">ANALYZING GAME PATTERNS...</div>
+      <div class="analysis-lines" id="analysisLines">
+        <div class="analysis-line">&gt; Waiting for data...</div>
+      </div>
+      <div style="margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--green);">&gt; System Status: Optimal</div>
+    </div>
+    <div class="analysis-right">
+      <div class="data-stream-label">DATA STREAM</div>
+      <div class="data-bars" id="dataBars">
+        <div class="data-bar" style="height:60%;animation-delay:0s"></div>
+        <div class="data-bar" style="height:80%;animation-delay:0.1s"></div>
+        <div class="data-bar" style="height:45%;animation-delay:0.2s"></div>
+        <div class="data-bar" style="height:90%;animation-delay:0.3s"></div>
+        <div class="data-bar" style="height:55%;animation-delay:0.4s"></div>
+        <div class="data-bar" style="height:70%;animation-delay:0.5s"></div>
+        <div class="data-bar" style="height:85%;animation-delay:0.6s"></div>
+        <div class="data-bar" style="height:50%;animation-delay:0.7s"></div>
+      </div>
+      <div class="accuracy-row">
+        <span class="acc-label">ACCURACY</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="acc-value" id="accuracyDisplay">--</span>
+          <span class="acc-high">HIGH</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="trend-title">LIVE TREND</div>
+    <div class="trend-scroll">
+      <div class="trend-row" id="trendRow">
+        <div style="color:var(--text-dim);font-size:12px;padding:10px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card pred-result-card">
+    <div class="pred-result-title">PREDICTION RESULT</div>
+    <div class="pred-circle-wrap">
+      <div class="pred-arrow left">&#9664;</div>
+      <div class="pred-circle">
+        <div class="pred-label-small">PREDICTED</div>
+        <div class="pred-value" id="predValue">--</div>
+        <div class="pred-conf-label">CONFIDENCE</div>
+        <div class="pred-conf-value" id="predConf">--</div>
+      </div>
+      <div class="pred-arrow right">&#9654;</div>
+    </div>
+    <div class="pred-period">Next Period: <span id="predPeriod">--</span></div>
+    <div class="pred-update">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Last Update: <span id="lastUpdate">--</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="trend-title" style="margin-bottom:12px;">STATISTICAL ANALYSIS</div>
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="stat-icon purple-bg">S</div>
+        <span class="stat-label">SMALL</span>
+        <div class="stat-val purple" id="smallPct">--%</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon green-bg">B</div>
+        <span class="stat-label">BIG</span>
+        <div class="stat-val green" id="bigPct">--%</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon blue-bg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="stat-label">TOTAL GAMES</span>
+        <div class="stat-val white" id="totalGames">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon orange-bg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <span class="stat-label">MAX STREAK</span>
+        <div class="stat-val orange" id="maxStreak">0</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="gen-btn" id="genBtn" onclick="generatePrediction()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+    GENERATE PREDICTION
+  </button>
+
+</div><!-- /prediction -->
+
+<!-- HISTORY SECTION -->
+<div class="section" id="sec-history">
+  <div class="history-header">⚡ PREDICTION HISTORY</div>
+  <div id="historyList">
+    <div class="no-history">No predictions yet.<br>Generate your first prediction!</div>
+  </div>
+</div>
+
+<!-- STATISTICS SECTION -->
+<div class="section" id="sec-statistics">
+  <div class="stats-title">📊 PERFORMANCE STATS</div>
+  <div class="stats-big-grid">
+    <div class="stats-big-card">
+      <div class="stats-big-num" style="color:var(--green)" id="statTotal">0</div>
+      <div class="stats-big-label">TOTAL PREDICTIONS</div>
+    </div>
+    <div class="stats-big-card">
+      <div class="stats-big-num" style="color:#ffaa00" id="statAccuracy">0%</div>
+      <div class="stats-big-label">ACCURACY</div>
+    </div>
+    <div class="stats-big-card">
+      <div class="stats-big-num" style="color:var(--green)" id="statWins">0</div>
+      <div class="stats-big-label">WINS</div>
+    </div>
+    <div class="stats-big-card">
+      <div class="stats-big-num" style="color:var(--red)" id="statLosses">0</div>
+      <div class="stats-big-label">LOSSES</div>
+    </div>
+  </div>
+  <div class="stats-bar-row">
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>WIN RATE</span><span id="statWinRate">0%</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barWin" style="width:0%;background:linear-gradient(90deg,var(--green2),var(--green))"></div></div>
+    </div>
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>LOSS RATE</span><span id="statLossRate">0%</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barLoss" style="width:0%;background:linear-gradient(90deg,#cc2244,var(--red))"></div></div>
+    </div>
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>BIG PREDICTIONS</span><span id="statBigPred">0</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barBig" style="width:0%;background:linear-gradient(90deg,var(--purple),var(--purple2))"></div></div>
+    </div>
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>SMALL PREDICTIONS</span><span id="statSmallPred">0</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barSmall" style="width:0%;background:linear-gradient(90deg,#0066cc,#0099ff)"></div></div>
+    </div>
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>MAX WIN STREAK</span><span id="statMaxWin">0</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barMaxWin" style="width:0%;background:linear-gradient(90deg,#ff8800,#ffaa00)"></div></div>
+    </div>
+    <div class="stats-bar-item">
+      <div class="stats-bar-label"><span>CURRENT STREAK</span><span id="statCurStreak">0</span></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill" id="barCurStreak" style="width:0%;background:linear-gradient(90deg,var(--green2),var(--green))"></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-tab active" id="tab-prediction" onclick="switchTab('prediction')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    PREDICTION
+  </button>
+  <button class="nav-tab" id="tab-history" onclick="switchTab('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    HISTORY
+  </button>
+  <button class="nav-tab" id="tab-statistics" onclick="switchTab('statistics')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    STATISTICS
+  </button>
+  <button class="nav-tab" id="tab-settings" onclick="openSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    SETTINGS
+  </button>
+</div>
+
+<!-- SETTINGS -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header">
+    <div class="settings-header-info">
+      <div class="title">MIKEY SERVER</div>
+      <div class="sub">Settings &amp; Information</div>
+    </div>
+    <button class="settings-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="settings-section-label">SYSTEM INFORMATION</div>
+  <div class="sysinfo-card">
+    <div class="sysinfo-row">
+      <svg class="sysinfo-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <div class="sysinfo-col">
+        <div class="sysinfo-key">DEVICE ID</div>
+        <div class="sysinfo-val" id="settingsDeviceId">--</div>
+      </div>
+    </div>
+    <div class="sysinfo-row">
+      <svg class="sysinfo-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div class="sysinfo-col">
+        <div class="sysinfo-key">LICENSE KEY</div>
+        <div class="sysinfo-val" id="settingsLicenseKey">--</div>
+      </div>
+    </div>
+    <div class="sysinfo-row">
+      <svg class="sysinfo-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div class="sysinfo-col">
+        <div class="sysinfo-key">EXPIRES</div>
+        <div class="sysinfo-val" id="settingsExpires">--</div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section-label">THEME CUSTOMIZATION</div>
+  <div class="theme-grid" id="themeGrid"></div>
+  <div class="settings-section-label" style="margin-top:16px;">NAVIGATION</div>
+  <div class="settings-nav">
+    <button class="settings-nav-btn" onclick="closeSettings();switchTab('history')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      HISTORY
+    </button>
+    <button class="settings-nav-btn" onclick="closeSettings();switchTab('statistics')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      STATISTICS
+    </button>
+  </div>
+  <button class="settings-logout" onclick="logout()">🚪 LOGOUT</button>
+</div>
+
+<!-- VICTORY POPUP -->
+<div class="popup-overlay" id="victoryPopup">
+  <div class="popup-card victory">
+    <div class="popup-video-wrap" id="victoryVideoWrap">
+      <!-- Placeholder shown before confirm -->
+      <div class="popup-video-placeholder" id="victoryPlaceholder">
+        <div class="placeholder-icon">🏆</div>
+      </div>
+      <video id="victoryVideo" playsinline style="display:none;"></video>
+    </div>
+    <div class="popup-bottom">
+      <div class="victory-badge">
+        <div class="victory-badge-icon">✓</div>
+        <div class="victory-title"><span class="wing">⊰</span>VICTORY<span class="wing">⊱</span></div>
+        <div class="victory-sub">✦ Prediction Correct ✦</div>
+      </div>
+      <div class="popup-vs-grid">
+        <div class="popup-vs-card">
+          <div class="popup-vs-icon pred-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--purple2)" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div class="popup-vs-label">PREDICTION</div>
+          <div class="popup-vs-val" id="vpPred">--</div>
+        </div>
+        <div class="popup-vs-sep">VS</div>
+        <div class="popup-vs-card actual">
+          <div class="popup-vs-icon act-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="popup-vs-label">ACTUAL RESULT</div>
+          <div class="popup-vs-val" id="vpActual">--</div>
+        </div>
+      </div>
+      <button class="popup-confirm-btn" id="victoryConfirmBtn" onclick="confirmVictory()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        CONFIRM
+      </button>
+      <div class="popup-ready">✦ Ready for next round ✦</div>
+    </div>
+  </div>
+</div>
+
+<!-- DEFEAT POPUP -->
+<div class="popup-overlay" id="defeatPopup">
+  <div class="popup-card defeat">
+    <div class="popup-video-wrap" id="defeatVideoWrap">
+      <div class="popup-video-placeholder" id="defeatPlaceholder">
+        <div class="placeholder-icon">💀</div>
+      </div>
+      <video id="defeatVideo" playsinline style="display:none;"></video>
+    </div>
+    <div class="popup-bottom">
+      <div class="victory-badge">
+        <div class="defeat-badge-icon">✕</div>
+        <div class="defeat-title">DEFEAT</div>
+        <div class="defeat-sub">✦ Better Luck Next Time! ✦</div>
+      </div>
+      <div class="popup-vs-grid">
+        <div class="popup-vs-card defeat-pred">
+          <div class="popup-vs-icon" style="background:rgba(255,68,102,0.15);border:1px solid var(--red);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="popup-vs-label">PREDICTION</div>
+          <div class="popup-vs-val" id="dpPred">--</div>
+        </div>
+        <div class="popup-vs-sep" style="color:var(--red);">VS</div>
+        <div class="popup-vs-card defeat-actual">
+          <div class="popup-vs-icon" style="background:rgba(100,150,200,0.1);border:1px solid rgba(100,150,200,0.4);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6699cc" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div class="popup-vs-label">ACTUAL RESULT</div>
+          <div class="popup-vs-val" id="dpActual">--</div>
+        </div>
+      </div>
+      <div class="defeat-note">
+        <span class="defeat-note-icon">⚠</span>
+        <span>Result Did Not Match.<br>Try analyzing the trend and play smart!</span>
+      </div>
+      <button class="popup-confirm-btn defeat-btn" id="defeatConfirmBtn" onclick="confirmDefeat()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        CONFIRM
+      </button>
+      <div class="defeat-footer">✦ Don't give up, every round is a new chance! ✦</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ FIREBASE ═══ */
+const firebaseConfig={apiKey:"AIzaSyBHLb-g-WUe8AuiVRIOVolh1MTXF1u7dOc",authDomain:"colour-games-dfe2d.firebaseapp.com",databaseURL:"https://colour-games-dfe2d-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"colour-games-dfe2d",storageBucket:"colour-games-dfe2d.firebasestorage.app",messagingSenderId:"92918980466",appId:"1:92918980466:web:137e6bc678c0fa76ff07eb"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+/* ═══ AUTH CHECK ═══ */
+const authData=JSON.parse(localStorage.getItem('mikey_auth')||'null');
+if(!authData){window.location.href='index.html';}
+const DEVICE_ID=authData?authData.deviceId:'UNKNOWN';
+const LICENSE_KEY=authData?authData.key:'--';
+
+document.getElementById('navDeviceId').textContent=DEVICE_ID;
+document.getElementById('settingsDeviceId').textContent=DEVICE_ID;
+document.getElementById('settingsLicenseKey').textContent=LICENSE_KEY;
+
+db.ref('licenses/'+LICENSE_KEY.replace(/[.#$\[\]\/]/g,'_').toUpperCase().trim()+'/expires').once('value').then(s=>{
+  const v=s.val();
+  document.getElementById('settingsExpires').textContent=v||'N/A';
+});
+
+/* ═══ STATE ═══ */
+let results=[];
+let currentPrediction=null;
+let pendingCheck=null;
+let predHistory=[];
+let winStreak=0;
+let lossStreak=0;
+let adaptiveWeights={trend:0.20,reversal:0.20,pattern:0.15,numCycle:0.15,colorTrans:0.10,hiddenAlgo:0.10,volatility:0.10};
+
+try{predHistory=JSON.parse(localStorage.getItem('wingo_history')||'[]');}catch(e){}
+
+// Restore streaks from history
+(function restoreStreaks(){
+  if(!predHistory.length)return;
+  let ws=0,ls=0;
+  for(const h of predHistory){
+    if(h.result==='win'){ws++;ls=0;}else{ls++;ws=0;}
+  }
+  // Actually recalculate current streak from start
+  ws=0;ls=0;
+  for(const h of predHistory){
+    if(h.result==='win'){if(ls>0){ls=0;}ws++;}
+    else{if(ws>0){ws=0;}ls++;}
+    // We want the CURRENT trailing streak
+  }
+  // Correct: walk backwards
+  ws=0;ls=0;
+  const lastRes=predHistory[0]?.result;
+  for(const h of predHistory){if(h.result===lastRes){if(lastRes==='win')ws++;else ls++;}else break;}
+  winStreak=ws;lossStreak=ls;
+})();
+
+/* ═══ API FETCH every 2 seconds ═══ */
+const API_URL='https://wingolast100.vercel.app/api/results?typeId=1&apiKey=12a04165-748c-4144-9398-96bd2e0ad956&token=1a97a413-ff57-4097-a44c-4bd402ace8d5&limit=100';
+
+async function fetchResults(){
+  try{
+    const resp=await fetch(API_URL,{cache:'no-store'});
+    if(!resp.ok)return;
+    const d=await resp.json();
+    let raw=[];
+    if(d&&d.data&&Array.isArray(d.data.list))raw=d.data.list;
+    else if(d&&d.data&&Array.isArray(d.data))raw=d.data;
+    else if(d&&Array.isArray(d.list))raw=d.list;
+    else if(d&&Array.isArray(d.result))raw=d.result;
+    else if(Array.isArray(d))raw=d;
+    if(raw.length>0){
+      const prev0=results[0]?results[0].issueNumber:'';
+      results=raw.map(item=>{
+        const n=parseInt(item.number??item.num??0,10);
+        const sz=(isNaN(n)?0:n)>=5?'BIG':'SMALL';
+        return{issueNumber:String(item.issueNumber||item.period||item.issue||''),number:isNaN(n)?0:n,size:sz,color:String(item.color||'')};
+      });
+      const new0=results[0]?results[0].issueNumber:'';
+      if(new0&&new0!==prev0){
+        updateTrend();updateStatGrid();checkPendingPrediction();
+      }else if(!prev0){
+        updateTrend();updateStatGrid();
+      }
+    }
+  }catch(e){}
+}
+fetchResults();
+setInterval(fetchResults,2000);
+
+/* ═══ TREND ═══ */
+function updateTrend(){
+  if(!results.length)return;
+  const last=results.slice(0,10).reverse();
+  const row=document.getElementById('trendRow');
+  row.innerHTML='';
+  last.forEach(r=>{
+    const item=document.createElement('div');item.className='trend-item';
+    const period=r.issueNumber?String(r.issueNumber).slice(-4):'??';
+    item.innerHTML=`<div class="trend-bubble ${r.size==='BIG'?'big':'small'}">${r.size==='BIG'?'B':'S'}</div><div class="trend-time">${period}</div>`;
+    row.appendChild(item);
+  });
+}
+
+/* ═══ STAT GRID ═══ */
+function updateStatGrid(){
+  if(!results.length)return;
+  const bigs=results.filter(r=>r.size==='BIG').length;
+  const bigP=Math.round(bigs/results.length*100);
+  document.getElementById('bigPct').textContent=bigP+'%';
+  document.getElementById('smallPct').textContent=(100-bigP)+'%';
+  document.getElementById('totalGames').textContent=results.length;
+  let maxS=1,cur=1;
+  for(let i=1;i<results.length;i++){if(results[i].size===results[i-1].size)cur++;else cur=1;if(cur>maxS)maxS=cur;}
+  document.getElementById('maxStreak').textContent=maxS+' ('+results[0].size+')';
+}
+
+/* ═══ CHECK PENDING (auto-settle) ═══ */
+function checkPendingPrediction(){
+  if(!pendingCheck||pendingCheck.settled)return;
+  const match=results.find(r=>String(r.issueNumber)===String(pendingCheck.periodNumber));
+  if(match){
+    pendingCheck.settled=true;
+    const win=match.size===pendingCheck.size;
+    const histItem={period:pendingCheck.periodNumber,pred:pendingCheck.size,actual:match.number+' '+match.size,result:win?'win':'loss',ts:Date.now()};
+    predHistory.unshift(histItem);
+    if(win){winStreak++;lossStreak=0;}else{winStreak=0;lossStreak++;}
+    localStorage.setItem('wingo_history',JSON.stringify(predHistory.slice(0,200)));
+    updateHistoryUI();updateStatsUI();
+    adaptWeights(win);
+    if(win)showVictoryPopup(pendingCheck.size,histItem.actual);
+    else showDefeatPopup(pendingCheck.size,histItem.actual);
+    pendingCheck=null;
+  }
+}
+
+/* ═══ ADAPT WEIGHTS ═══ */
+function adaptWeights(win){
+  const recent=predHistory.slice(0,50);
+  const wr=recent.filter(h=>h.result==='win').length/Math.max(1,recent.length);
+  if(wr<0.45){adaptiveWeights.reversal=Math.min(0.35,adaptiveWeights.reversal+0.05);adaptiveWeights.trend=Math.max(0.05,adaptiveWeights.trend-0.05);}
+  else if(wr>0.55){adaptiveWeights.trend=Math.min(0.35,adaptiveWeights.trend+0.05);adaptiveWeights.reversal=Math.max(0.05,adaptiveWeights.reversal-0.05);}
+  const sum=Object.values(adaptiveWeights).reduce((a,b)=>a+b,0);
+  Object.keys(adaptiveWeights).forEach(k=>adaptiveWeights[k]/=sum);
+}
+
+/* ═══════════════════════════════════════════════
+   FULL 8-LAYER PREDICTION ENGINE
+═══════════════════════════════════════════════ */
+function runPredictionEngine(data){
+  if(data.length<10)return{size:'BIG',confidence:55,bigProb:55};
+  const sizes=data.map(r=>r.size);
+  const nums=data.map(r=>r.number);
+
+  // LAYER 1: Number Analysis
+  const numFreq={};
+  for(let i=0;i<10;i++)numFreq[i]=0;
+  nums.forEach(n=>numFreq[n]++);
+  const avgFreq=nums.length/10;
+  const cold=Object.entries(numFreq).filter(([,c])=>c<=avgFreq*0.7).map(([n])=>parseInt(n));
+  const hot=Object.entries(numFreq).filter(([,c])=>c>=avgFreq*1.3).map(([n])=>parseInt(n));
+  const delayed=[];
+  for(let n=0;n<10;n++){const idx=nums.indexOf(n);delayed.push({n,gap:idx===-1?100:idx});}
+  delayed.sort((a,b)=>b.gap-a.gap);
+  const coldBig=cold.filter(n=>n>=5).length;
+  const coldSmall=cold.filter(n=>n<5).length;
+  const delayedBig=delayed.slice(0,3).filter(d=>d.n>=5).length;
+  const delayedSmall=delayed.slice(0,3).filter(d=>d.n<5).length;
+
+  // LAYER 2: Size Analysis
+  const bigC=sizes.filter(s=>s==='BIG').length;
+  const smC=sizes.length-bigC;
+  let curSide=sizes[0];
+  let curStreak=0;
+  for(let i=0;i<sizes.length;i++){if(sizes[i]===curSide)curStreak++;else break;}
+  let maxBigS=0,maxSmS=0,tmpB=0,tmpS=0;
+  for(let i=0;i<sizes.length;i++){
+    if(sizes[i]==='BIG'){tmpB++;tmpS=0;if(tmpB>maxBigS)maxBigS=tmpB;}
+    else{tmpS++;tmpB=0;if(tmpS>maxSmS)maxSmS=tmpS;}
+  }
+  const maxHistStreak=curSide==='BIG'?maxBigS:maxSmS;
+  const exhaustion=maxHistStreak>0?curStreak/maxHistStreak:0;
+
+  // LAYER 3: Average streak
+  let streakGroups=1,totalStrLen=1;
+  for(let i=1;i<sizes.length;i++){if(sizes[i]===sizes[i-1])totalStrLen++;else{streakGroups++;totalStrLen++;}}
+  const avgStreak=totalStrLen/streakGroups;
+
+  // LAYER 4: Pattern detection
+  // Dragon
+  const isDragon=curStreak>=3;
+  const dragonExhausted=isDragon&&exhaustion>=0.7;
+  // ZigZag
+  let zzCount=0;
+  for(let i=1;i<Math.min(sizes.length,8);i++){if(sizes[i]!==sizes[i-1])zzCount++;}
+  const isZigzag=zzCount>=5;
+  // Mirror (palindrome last 6)
+  const last6=sizes.slice(0,6);
+  const isMirror=last6[0]===last6[5]&&last6[1]===last6[4]&&last6[2]===last6[3];
+  // Double pair AABB
+  const isDoublePair=sizes.length>=4&&sizes[0]===sizes[1]&&sizes[2]===sizes[3]&&sizes[0]!==sizes[2];
+  // Trap continuation: AAAB A
+  const isTrap=sizes.length>=5&&sizes[0]===sizes[4]&&sizes[0]===sizes[3]&&sizes[0]!==sizes[1]&&sizes[0]!==sizes[2]&&sizes[0]!==sizes[3];
+
+  // LAYER 5: Transition matrix
+  const trans={BIG:{BIG:0,SMALL:0},SMALL:{BIG:0,SMALL:0}};
+  for(let i=0;i<sizes.length-1;i++){const from=sizes[i+1],to=sizes[i];if(trans[to]&&trans[to][from]!==undefined)trans[to][from]++;}
+  const totalFromCur=(curSide==='BIG')?(trans.BIG.BIG+trans.SMALL.BIG):(trans.BIG.SMALL+trans.SMALL.SMALL);
+  const flipProb=totalFromCur>0?((curSide==='BIG'?trans.SMALL.BIG:trans.BIG.SMALL)/totalFromCur):0.5;
+  // After-streak flip probability
+  const sameWindows=[];
+  for(let i=0;i<=sizes.length-curStreak-1;i++){
+    const w=sizes.slice(i,i+curStreak);
+    if(w.every(s=>s===curSide))sameWindows.push(sizes[i+curStreak]);
+  }
+  const streakFlipProb=sameWindows.length>0?sameWindows.filter(s=>s!==curSide).length/sameWindows.length:0.5;
+
+  // LAYER 6: Volatility
+  let volTrans=0;
+  for(let i=1;i<Math.min(sizes.length,20);i++)if(sizes[i]!==sizes[i-1])volTrans++;
+  const last20nums=nums.slice(0,20);
+  const stdDev=(()=>{const m=last20nums.reduce((a,b)=>a+b,0)/last20nums.length;return Math.sqrt(last20nums.reduce((a,b)=>a+(b-m)*(b-m),0)/last20nums.length);})();
+  let state='NORMAL';
+  if(volTrans<=4)state='STABLE';
+  else if(volTrans>=14)state='CHAOTIC';
+  else if(volTrans>=8&&stdDev>3)state='MANIPULATED';
+
+  // LAYER 7: DNA Fingerprint (last 15)
+  let dnaVote=null,dnaScore=0;
+  const fpLen=Math.min(15,Math.floor(sizes.length/3));
+  const fp=sizes.slice(0,fpLen).join('');
+  for(let i=fpLen;i<sizes.length-1;i++){
+    const w=sizes.slice(i,i+fpLen).join('');
+    let matches=0;
+    for(let j=0;j<fpLen;j++)if(fp[j]===w[j])matches++;
+    const score=matches/fpLen;
+    if(score>dnaScore){dnaScore=score;dnaVote=sizes[i-1]||null;}
+  }
+  if(dnaScore<0.55)dnaVote=null;
+
+  // LAYER 8: Hidden Algorithm Detection
+  const sizeImbal=Math.abs(bigC-smC)/sizes.length;
+  let forcedRev=null;
+  if(bigC>smC*1.4)forcedRev='SMALL';
+  else if(smC>bigC*1.4)forcedRev='BIG';
+
+  // ══ WEIGHTED SCORING ══
+  let bigScore=0,smScore=0;
+  const W=adaptiveWeights;
+
+  // Trend (momentum)
+  if(curStreak<=avgStreak){if(curSide==='BIG')bigScore+=W.trend;else smScore+=W.trend;}
+  else{if(curSide==='BIG')smScore+=W.trend*0.3;else bigScore+=W.trend*0.3;}
+
+  // Reversal (exhaustion)
+  if(exhaustion>=0.70||curStreak>=4){if(curSide==='BIG')smScore+=W.reversal;else bigScore+=W.reversal;}
+  else{if(curSide==='BIG')bigScore+=W.reversal*0.4;else smScore+=W.reversal*0.4;}
+
+  // Pattern signals
+  if(isDragon){
+    if(dragonExhausted){if(curSide==='BIG')smScore+=W.pattern*0.6;else bigScore+=W.pattern*0.6;}
+    else{if(curSide==='BIG')bigScore+=W.pattern*0.3;else smScore+=W.pattern*0.3;}
+  }
+  if(isZigzag){if(curSide==='BIG')smScore+=W.pattern;else bigScore+=W.pattern;}
+  if(isTrap){if(curSide==='BIG')smScore+=W.pattern*0.7;else bigScore+=W.pattern*0.7;}
+  if(isDoublePair){if(curSide==='BIG')smScore+=W.pattern*0.5;else bigScore+=W.pattern*0.5;}
+  if(isMirror){if(curSide==='BIG')smScore+=W.pattern*0.4;else bigScore+=W.pattern*0.4;}
+
+  // Number cycle (due numbers)
+  const numBiasStrength=Math.max(delayedBig,delayedSmall,coldBig,coldSmall);
+  if(delayedBig+coldBig>delayedSmall+coldSmall)bigScore+=W.numCycle;
+  else if(delayedSmall+coldSmall>delayedBig+coldBig)smScore+=W.numCycle;
+
+  // Transition matrix + streak flip
+  const effectiveFlip=(flipProb+streakFlipProb)/2;
+  if(effectiveFlip>0.55){if(curSide==='BIG')smScore+=W.colorTrans;else bigScore+=W.colorTrans;}
+  else{if(curSide==='BIG')bigScore+=W.colorTrans;else smScore+=W.colorTrans;}
+
+  // Hidden algo
+  if(forcedRev==='BIG')bigScore+=W.hiddenAlgo*sizeImbal*2;
+  else if(forcedRev==='SMALL')smScore+=W.hiddenAlgo*sizeImbal*2;
+
+  // Volatility
+  if(state==='STABLE'){if(curSide==='BIG')bigScore+=W.volatility;else smScore+=W.volatility;}
+  else if(state==='CHAOTIC'){bigScore*=0.7;smScore*=0.7;}
+  else if(state==='MANIPULATED'){bigScore*=0.85;smScore*=0.85;}
+
+  // DNA bias
+  if(dnaVote==='BIG')bigScore+=0.1;
+  else if(dnaVote==='SMALL')smScore+=0.1;
+
+  const total=bigScore+smScore||1;
+  let bigProb=bigScore/total*100;
+
+  // ENSEMBLE VOTING (3 signals)
+  const mainVote=bigProb>=50?'BIG':'SMALL';
+  let votes=[mainVote];
+  if(dnaVote)votes.push(dnaVote);
+  const transVote=effectiveFlip>=0.62?(curSide==='BIG'?'SMALL':'BIG'):effectiveFlip<=0.38?curSide:null;
+  if(transVote)votes.push(transVote);
+  const bigVotes=votes.filter(v=>v==='BIG').length;
+  let finalSize=bigVotes>votes.length/2?'BIG':'SMALL';
+
+  // LOSS STREAK OVERRIDE
+  if(lossStreak>=3){
+    // cooldown - still show but confidence drops
+  } else if(lossStreak===2){
+    const lastLoss=predHistory.find(h=>h.result==='loss');
+    if(lastLoss)finalSize=lastLoss.pred==='BIG'?'SMALL':'BIG';
+  }
+
+  // CONFIDENCE CALCULATION
+  const margin=Math.abs(bigProb-50)/50;
+  let conf=50+margin*40;
+  if(state==='NORMAL'||state==='STABLE')conf+=4;
+  if(forcedRev&&forcedRev===finalSize)conf+=4;
+  if(dnaVote===finalSize)conf+=4;
+  if(isDragon||isZigzag)conf+=4;
+  if(state==='CHAOTIC')conf-=18;
+  if(state==='MANIPULATED')conf-=10;
+  if(lossStreak===1)conf-=6;
+  if(lossStreak===2)conf-=10;
+  if(lossStreak>=3)conf-=18;
+  conf=Math.max(35,Math.min(95,conf));
+
+  if(finalSize==='BIG')bigProb=Math.max(bigProb,50);
+  else bigProb=Math.min(bigProb,50);
+
+  return{size:finalSize,confidence:Math.round(conf),bigProb:Math.round(bigProb),state,lossStreak,winStreak};
+}
+
+/* ═══ GENERATE PREDICTION ═══ */
+async function generatePrediction(){
+  const btn=document.getElementById('genBtn');
+  if(btn.classList.contains('loading'))return;
+  btn.classList.add('loading');
+  btn.innerHTML=`<svg class="spin-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> ANALYZING...`;
+  const lines=['> Scanning recent results...','> Calculating probability...','> Analyzing frequency...','> Detecting trend direction...','> Finalizing prediction...'];
+  const linesEl=document.getElementById('analysisLines');
+  linesEl.innerHTML='';
+  for(let i=0;i<lines.length;i++){
+    await new Promise(r=>setTimeout(r,300));
+    const d=document.createElement('div');
+    d.className='analysis-line'+(i===lines.length-1?' active':'');
+    d.textContent=lines[i];
+    linesEl.appendChild(d);
+  }
+  await fetchResults();
+  if(!results.length){
+    btn.classList.remove('loading');
+    btn.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> GENERATE PREDICTION`;
+    return;
+  }
+  const eng=runPredictionEngine(results);
+  currentPrediction=eng;
+  const lastPeriod=results[0]?results[0].issueNumber:'';
+  let nextPeriod='';
+  if(lastPeriod){try{nextPeriod=String(parseInt(lastPeriod)+1);}catch(e){nextPeriod=lastPeriod+'+';}}
+  document.getElementById('predValue').textContent=eng.size;
+  document.getElementById('predValue').style.color=eng.size==='BIG'?'var(--green)':'var(--purple2)';
+  document.getElementById('predConf').textContent=eng.confidence+'%';
+  document.getElementById('accuracyDisplay').textContent=eng.confidence+'%';
+  document.getElementById('predPeriod').textContent=nextPeriod||'--';
+  document.getElementById('lastUpdate').textContent=new Date().toLocaleTimeString();
+  document.querySelectorAll('.data-bar').forEach(b=>{b.style.height=Math.floor(Math.random()*70+20)+'%';});
+  if(nextPeriod){pendingCheck={periodNumber:nextPeriod,size:eng.size,settled:false};}
+  btn.classList.remove('loading');
+  btn.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> GENERATE PREDICTION`;
+}
+
+/* ═══════════════════════════════════════════════
+   VICTORY POPUP
+   - Show popup first (placeholder in video area)
+   - On CONFIRM click → play video INSIDE popup, then auto-close popup
+═══════════════════════════════════════════════ */
+function showVictoryPopup(pred,actual){
+  document.getElementById('vpPred').textContent=pred;
+  document.getElementById('vpActual').textContent=actual;
+  // Reset video area to placeholder
+  const vid=document.getElementById('victoryVideo');
+  vid.pause();vid.src='';vid.style.display='none';
+  document.getElementById('victoryPlaceholder').style.display='flex';
+  document.getElementById('victoryPopup').classList.add('show');
+  startConfetti();
+}
+
+function confirmVictory(){
+  // Determine video file based on win streak
+  const file=winStreak>=2?'507.mp4':'506.mp4';
+  const dur=winStreak>=2?10000:5000;
+  // Hide placeholder, show video in popup
+  document.getElementById('victoryPlaceholder').style.display='none';
+  const vid=document.getElementById('victoryVideo');
+  vid.src=file;
+  vid.muted=false;
+  vid.currentTime=0;
+  vid.style.display='block';
+  vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+  stopConfetti();
+  // Auto close after duration
+  setTimeout(()=>{
+    vid.pause();vid.src='';vid.style.display='none';
+    document.getElementById('victoryPlaceholder').style.display='flex';
+    document.getElementById('victoryPopup').classList.remove('show');
+  },dur);
+}
+
+/* ═══════════════════════════════════════════════
+   DEFEAT POPUP
+   Same logic: video plays inside popup on CONFIRM
+═══════════════════════════════════════════════ */
+function showDefeatPopup(pred,actual){
+  document.getElementById('dpPred').textContent=pred;
+  document.getElementById('dpActual').textContent=actual;
+  const vid=document.getElementById('defeatVideo');
+  vid.pause();vid.src='';vid.style.display='none';
+  document.getElementById('defeatPlaceholder').style.display='flex';
+  document.getElementById('defeatPopup').classList.add('show');
+}
+
+function confirmDefeat(){
+  const file=lossStreak>=2?'509.mp4':'508.mp4';
+  const dur=lossStreak>=2?6000:8000;
+  document.getElementById('defeatPlaceholder').style.display='none';
+  const vid=document.getElementById('defeatVideo');
+  vid.src=file;
+  vid.muted=false;
+  vid.currentTime=0;
+  vid.style.display='block';
+  vid.play().catch(()=>{vid.muted=true;vid.play().catch(()=>{});});
+  setTimeout(()=>{
+    vid.pause();vid.src='';vid.style.display='none';
+    document.getElementById('defeatPlaceholder').style.display='flex';
+    document.getElementById('defeatPopup').classList.remove('show');
+  },dur);
+}
+
+/* ═══ CONFETTI ═══ */
+let confettiAnim=null;
+function startConfetti(){
+  const canvas=document.getElementById('confettiCanvas');
+  canvas.style.display='block';
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  const pieces=Array.from({length:80},()=>({x:Math.random()*canvas.width,y:Math.random()*-canvas.height,r:Math.random()*6+3,c:`hsl(${Math.random()*360},80%,60%)`,v:Math.random()*3+1,sx:Math.random()*2-1}));
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);pieces.forEach(p=>{ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();p.y+=p.v;p.x+=p.sx;if(p.y>canvas.height){p.y=-10;p.x=Math.random()*canvas.width;}});confettiAnim=requestAnimationFrame(draw);}
+  draw();
+}
+function stopConfetti(){if(confettiAnim)cancelAnimationFrame(confettiAnim);document.getElementById('confettiCanvas').style.display='none';}
+
+/* ═══ HISTORY UI ═══ */
+function updateHistoryUI(){
+  const list=document.getElementById('historyList');
+  if(!predHistory.length){list.innerHTML='<div class="no-history">No predictions yet.<br>Generate your first prediction!</div>';return;}
+  list.innerHTML=predHistory.map(h=>`
+    <div class="history-item">
+      <span class="history-period">#${h.period?String(h.period).slice(-6):'-'}</span>
+      <span class="history-pred" style="color:${h.pred==='BIG'?'var(--green)':'var(--purple2)'}">${h.pred}</span>
+      <span class="history-actual">${h.actual}</span>
+      <span class="history-result ${h.result}">${h.result==='win'?'WIN':'LOSS'}</span>
+    </div>`).join('');
+}
+updateHistoryUI();
+
+/* ═══ STATS UI ═══ */
+function updateStatsUI(){
+  const total=predHistory.length;
+  const wins=predHistory.filter(h=>h.result==='win').length;
+  const losses=total-wins;
+  const acc=total>0?Math.round(wins/total*100):0;
+  const bigs=predHistory.filter(h=>h.pred==='BIG').length;
+  const smalls=predHistory.filter(h=>h.pred==='SMALL').length;
+  let maxW=0,curW=0;
+  predHistory.slice().reverse().forEach(h=>{if(h.result==='win')curW++;else curW=0;if(curW>maxW)maxW=curW;});
+  let cs=0;const lastRes=predHistory[0]?.result;
+  for(const h of predHistory){if(h.result===lastRes)cs++;else break;}
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statAccuracy').textContent=acc+'%';
+  document.getElementById('statWins').textContent=wins;
+  document.getElementById('statLosses').textContent=losses;
+  document.getElementById('statWinRate').textContent=acc+'%';
+  document.getElementById('statLossRate').textContent=(100-acc)+'%';
+  document.getElementById('statBigPred').textContent=bigs;
+  document.getElementById('statSmallPred').textContent=smalls;
+  document.getElementById('statMaxWin').textContent=maxW;
+  document.getElementById('statCurStreak').textContent=cs;
+  document.getElementById('barWin').style.width=acc+'%';
+  document.getElementById('barLoss').style.width=(100-acc)+'%';
+  document.getElementById('barBig').style.width=(total?bigs/total*100:0)+'%';
+  document.getElementById('barSmall').style.width=(total?smalls/total*100:0)+'%';
+  document.getElementById('barMaxWin').style.width=Math.min(100,maxW*10)+'%';
+  document.getElementById('barCurStreak').style.width=Math.min(100,cs*10)+'%';
+}
+updateStatsUI();
+
+/* ═══ TABS ═══ */
+function switchTab(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if(name==='statistics')updateStatsUI();
+  if(name==='history')updateHistoryUI();
+}
+
+/* ═══ SETTINGS ═══ */
+const themes=[
+  {name:'DEFAULT\nCYAN',bg:'#00c8f0,#0088cc',text:'#fff'},
+  {name:'NEXORA\nRED',bg:'#ff4466,#cc1133',text:'#fff'},
+  {name:'BLUE\nCYBER',bg:'#0055ff,#0033cc',text:'#fff'},
+  {name:'PURPLE\nGALAXY',bg:'#7c3aed,#5b21b6',text:'#fff'},
+  {name:'GREEN\nMATRIX',bg:'#00ff88,#00cc66',text:'#000'},
+  {name:'GOLD\nELITE',bg:'#ffaa00,#cc8800',text:'#000'},
+  {name:'ORANGE\nFIRE',bg:'#ff6600,#cc4400',text:'#fff'},
+  {name:'PINK\nNEON',bg:'#ff44cc,#cc1199',text:'#fff'},
+  {name:'CYAN\nGLASS',bg:'#00eedd,#00aacc',text:'#000'},
+  {name:'EMERALD',bg:'#00cc88,#009966',text:'#fff'},
+  {name:'CRIMSON',bg:'#cc2244,#aa1133',text:'#fff'},
+  {name:'INDIGO',bg:'#6644dd,#4422bb',text:'#fff'},
+  {name:'ROSE\nGOLD',bg:'#ffaacc,#cc7799',text:'#000'},
+  {name:'TEAL\nOCEAN',bg:'#00aacc,#007799',text:'#fff'},
+  {name:'LIME\nSPORT',bg:'#aaff00,#88cc00',text:'#000'},
+  {name:'VIOLET\nDEEP',bg:'#9933ff,#6600cc',text:'#fff'},
+  {name:'AMBER\nSUN',bg:'#ffbb00,#dd9900',text:'#000'},
+];
+let activeTheme=parseInt(localStorage.getItem('wingo_theme')||'3');
+function buildThemeGrid(){
+  const grid=document.getElementById('themeGrid');grid.innerHTML='';
+  themes.forEach((t,i)=>{
+    const btn=document.createElement('button');
+    btn.className='theme-btn'+(i===activeTheme?' active':'');
+    const [c1,c2]=t.bg.split(',');
+    btn.style.background=`linear-gradient(135deg,${c1},${c2})`;
+    btn.style.color=t.text;btn.style.borderColor=i===activeTheme?'#fff':'transparent';
+    btn.textContent=t.name;btn.onclick=()=>applyTheme(i);
+    grid.appendChild(btn);
+  });
+}
+function applyTheme(i){
+  activeTheme=i;localStorage.setItem('wingo_theme',i);
+  const [c1,c2]=themes[i].bg.split(',');
+  document.documentElement.style.setProperty('--purple',c1);
+  document.documentElement.style.setProperty('--purple2',c2);
+  document.documentElement.style.setProperty('--purple-glow',c1+'88');
+  buildThemeGrid();
+}
+buildThemeGrid();
+if(activeTheme!==3)applyTheme(activeTheme);
+
+function openSettings(){document.getElementById('settingsPanel').classList.add('open');document.getElementById('settingsOverlay').classList.add('open');}
+function closeSettings(){document.getElementById('settingsPanel').classList.remove('open');document.getElementById('settingsOverlay').classList.remove('open');}
+function logout(){localStorage.removeItem('mikey_auth');window.location.href='index.html';}
+</script>
+</body>
+</html>
